@@ -4,6 +4,7 @@
 Servo myservo;  // create a servo object
 void setup() {
   myservo.attach(SERVO1);  // attaches servo object on pin 23
+  Serial.begin(115200)
 }
 void loop() {
   for (int degree = 0; degree <= 180; degree+=1) {
@@ -13,4 +14,5 @@ void loop() {
   for (int degree = 180; degree >= 0; degree -= 1) {
     myservo.write(degree); delay(15);
   }
+  Serial.print("poop")
 }
