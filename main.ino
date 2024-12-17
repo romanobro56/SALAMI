@@ -61,18 +61,16 @@
 #define IN2 12 //motor 1 bck pin
 #define IN3 13 //motor 2 fwd pin
 #define IN4 15 //motor 2 bck pin
-#define ENA 27 //motor 1 speed control
-#define ENB 4 //motor 2 speed control
+#define ENA A4 //motor 1 speed control
+#define ENB A10 //motor 2 speed control
 
 //define ultrasonic dist sensor pins
 #define TRIG 5
-#define ECHO 16
+#define ECHO 18
 
 //distance queue size
 #define DISTQ 10
 #define STOPDIST 20
-
-#define LED 33
 
 void setup() {
   //SerialBT.begin("ESP32_Audio"); // Bluetooth device name
@@ -84,7 +82,6 @@ void setup() {
   pinMode(ECHO, INPUT);
   pinMode(ENA, OUTPUT);
   pinMode(ENB, OUTPUT);
-  pinMode(LED, OUTPUT);
 
   Serial.begin(9600);
 
@@ -152,21 +149,21 @@ double getMedianDist(){
 basic motor movement methods
 from the back: motor1 is the right wheel, motor2 is the left wheel
 */
-void motor1Fwd(){
+void motor1Bck(){
   digitalWrite(IN1, HIGH);
   digitalWrite(IN2, LOW);
 }
-void motor1Bck(){
+void motor1Fwd(){
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
-}
-void motor2Fwd(){
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
 }
 void motor2Bck(){
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
+}
+void motor2Fwd(){
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
 }
 
 //moves car forward
@@ -193,7 +190,7 @@ void stopCar(){
 void turnLeft(){
   motor1Fwd();
   motor2Bck();
-  delay(350);
+  delay(300);
   stopCar();
 }
 
@@ -236,22 +233,40 @@ void loop(){
   if(distIndex == 0){
     setDistArray();
   }
-  distances[distIndex%DISTQ] = measureDistance();
+  //distances[distIndex%DISTQ] = measureDistance();
   distIndex++;
   //if at any time, distance is too close, car will stop
-  if(getMedianDist() <= 20){
-    digitalWrite(LED, HIGH);
-    Serial.println("stopping car, turning around");
-    stopCar();
-    delay(1000);
-    moveBackward();
-    delay(500);
-    turn180();
-    Serial.println("measuring in front");
-    setDistArray();
-    digitalWrite(LED, LOW);
-  }
+  turnLeft();
+  delay(500);
+  turnRight();
+  delay(2000);
+  // if(getMedianDist() <= 20){
+  //   Serial.println("stopping car, turning around");
+  //   stopCar();
+  //   delay(10000);
+  //   // delay(1000);
+  //   // moveBackward();
+  //   // delay(500);
+  //   //turn180();
+  //   Serial.println("measuring in front");
+  //   setDistArray();
+  // }
   Serial.println(getMedianDist());
+  //delay(5000);
+  //analogWrite(ENB, 255);
+
+  // analogWrite(ENA, 255);
+  // analogWrite(ENB, 255);
+  // moveForward();
+  // delay(2000);
+  // stopCar();
+  // delay(1000);
+  // // analogWrite(ENA, 255);
+  // // analogWrite(ENB, 255);
+  // moveBackward();
+  // delay(2000);
+  // stopCar();
+  // delay(5000);
 }
 
 // void loop() {
