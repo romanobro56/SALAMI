@@ -1,4 +1,4 @@
-// #include <Arduino.h>
+#include <Arduino.h>
 // #include "BluetoothSerial.h"
 // #include <driver/i2s.h>
 // const int sampleWindow = 50;
@@ -57,57 +57,202 @@
 
 // BluetoothSerial SerialBT;
 // //define motor driver pins
-// #define IN1 27 // motor 1 fwd pin
-// #define IN2 26 //motor 1 bck pin
-// #define IN3 4 //motor 2 fwd pin
-// #define IN4 5 //motor 2 bck pin
-// #define ENA 14 //motor 1 speed control
-// #define ENB 7 //motor 2 speed control
-// //all example numbers, change when we connect actual pins for L298N
+#define IN1 14// motor 1 fwd pin
+#define IN2 12 //motor 1 bck pin
+#define IN3 13 //motor 2 fwd pin
+#define IN4 15 //motor 2 bck pin
+#define ENA 27 //motor 1 speed control
+#define ENB 4 //motor 2 speed control
 
-// void setup() {
-//   SerialBT.begin("ESP32_Audio"); // Bluetooth device name
-//   pinMode(IN1, OUTPUT);
-//   pinMode(IN2, OUTPUT);
-//   pinMode(IN3, OUTPUT);
-//   pinMode(IN4, OUTPUT);
-//   pinMode(ENA, OUTPUT);
-//   pinMode(ENB, OUTPUT);
+//define ultrasonic dist sensor pins
+#define TRIG 5
+#define ECHO 16
 
-//   analogWrite(ENA, 255);//sets speed to 255 (0-255 if using PWM)
-//   analogWrite(ENB, 255);
+//distance queue size
+#define DISTQ 10
+#define STOPDIST 20
 
-//   Serial.begin(115200);
-// }
-// //ENB and ENA motor speed can be set via analogWrite
+#define LED 33
 
-// //basic motor movement methods
+void setup() {
+  //SerialBT.begin("ESP32_Audio"); // Bluetooth device name
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(TRIG, OUTPUT);
+  pinMode(ECHO, INPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(LED, OUTPUT);
 
-// //sets motor1 direction to forward
-// void motor1Fwd(){
-//   digitalWrite(IN1, HIGH);
-//   digitalWrite(IN2, LOW);
-// }
-// void motor1Bck(){
-//   digitalWrite(IN1, LOW);
-//   digitalWrite(IN2, HIGH);
-// }
-// void motor1Stop(){
-//   digitalWrite(IN1, LOW);
-//   digitalWrite(IN2, LOW);
-// }
-// void motor2Fwd(){
-//   digitalWrite(IN3, HIGH);
-//   digitalWrite(IN4, LOW);
-// }
-// void motor2Bck(){
-//   digitalWrite(IN3, LOW);
-//   digitalWrite(IN4, HIGH);
-// }
-// void motor2Stop(){
-//   digitalWrite(IN3, LOW);
-//   digitalWrite(IN4, LOW);
-// }
+  Serial.begin(9600);
+
+  // analogWrite(ENA, 255);//sets speed to 255 (0-255 if using PWM)
+  // analogWrite(ENB, 255);
+}
+//ENB and ENA motor speed can be set via analogWrite
+
+
+/*
+- this array stores the DISTQ most recent distances recorded from ultrasonic dist sensor
+- we'll use this as a circular queue to keep consistency
+*/
+double distances[DISTQ];
+
+//in a stopped state, this will fill the circular queue with distances
+void setDistArray(){
+  for(int i = 0; i<DISTQ; i++){
+    distances[i] = measureDistance();
+  }
+}
+
+//ultrasonic distance sensor measure distance; taken from lecture slides (11 for reference)
+double measureDistance(){
+    // send a 10us pulse to trigger pin to start
+  digitalWrite(TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG, LOW);
+  // wait till echo pin's rising edge
+  while(digitalRead(ECHO)==LOW) { }
+  unsigned long start_time = micros();
+  // wait till echo pin's falling edge
+  while((digitalRead(ECHO)==HIGH)) { }
+  // calculate the time of flight in us
+  unsigned long T = micros() - start_time;
+  // convert time of flight to distance
+  return T*0.01716f; // 34320cm / 2 / 10^6
+}
+
+//finds median in the circular queue
+double getMedianDist(){
+  double copy[DISTQ];
+  for(int i = 0; i<DISTQ; i++){
+    copy[i] = distances[i];
+  }
+  //sort list
+  for(int i = 0; i < DISTQ; i++){
+    int smallest = i;
+    for(int j = i+1; j < DISTQ; j++){
+      if(copy[j] < copy[smallest]){
+        smallest = j;
+      }
+    }
+    int temp = copy[i];
+    copy[i] = copy[smallest];
+    copy[smallest] = temp;
+  }
+  return copy[DISTQ/2];
+}
+
+
+/*
+basic motor movement methods
+from the back: motor1 is the right wheel, motor2 is the left wheel
+*/
+void motor1Fwd(){
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+}
+void motor1Bck(){
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+}
+void motor2Fwd(){
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+void motor2Bck(){
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+//moves car forward
+void moveForward(){
+  motor1Fwd();
+  motor2Fwd();
+}
+
+//moves car backward
+void moveBackward(){
+  motor1Bck();
+  motor2Bck();
+}
+
+//stops car movement
+void stopCar(){
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+}
+
+//turns left 90
+void turnLeft(){
+  motor1Fwd();
+  motor2Bck();
+  delay(350);
+  stopCar();
+}
+
+//turns right 90
+void turnRight(){
+  motor1Bck();
+  motor2Fwd();
+  delay(330);
+  stopCar();
+}
+
+//spins left 360
+void spinLeft(){
+  motor1Fwd();
+  motor2Bck();
+  delay(1200);
+  stopCar();
+}
+
+//spins right 360
+void spinRight(){
+  motor2Fwd();
+  motor1Bck();
+  delay(1200);
+  stopCar();
+}
+
+//turns right 180
+void turn180(){
+  motor1Bck();
+  motor2Fwd();
+  delay(660);
+  stopCar();
+}
+
+
+int distIndex = 0;
+void loop(){
+  //code
+  if(distIndex == 0){
+    setDistArray();
+  }
+  distances[distIndex%DISTQ] = measureDistance();
+  distIndex++;
+  //if at any time, distance is too close, car will stop
+  if(getMedianDist() <= 20){
+    digitalWrite(LED, HIGH);
+    Serial.println("stopping car, turning around");
+    stopCar();
+    delay(1000);
+    moveBackward();
+    delay(500);
+    turn180();
+    Serial.println("measuring in front");
+    setDistArray();
+    digitalWrite(LED, LOW);
+  }
+  Serial.println(getMedianDist());
+}
 
 // void loop() {
 //     // Read audio data (either from I2S mic or WAV file)
