@@ -67,7 +67,7 @@ export default function HomeScreen() {
     <SafeAreaView>
       <ScrollView style={styles.mainScrollContainer}>
         <View style={styles.mainInnerContainer}>
-          <Text style={styles.title}>Welcome to the Speech-to-Text App</Text>
+          <Text style={styles.title}>Talk to Salami</Text>
           <View style={styles.transcriptionContainer}>
             {isTranscribing ? (
               <ActivityIndicator size="small" color="#000" />

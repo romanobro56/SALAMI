@@ -1,4 +1,7 @@
 import { Request, Response } from "express";
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 export const speechToText = async (req: Request, res: Response) => {
   const data = req.body;
@@ -24,11 +27,19 @@ export const speechToText = async (req: Request, res: Response) => {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
-          "X-goog-api-key": `AIzaSyAeMlzxoNEEdyyy5gjCduOcF_n7IzyhUo0`,
+          "X-goog-api-key": process.env.API_KEY,
         },
       }
     ).then((response) => response.json());
     console.log(speechResults)
+    const words = speechResults?.results?.[0].alternatives?.[0].transcript
+    const urlBody = words.replace(/\s+/g, '-').toLowerCase()
+    const url = `https://cloud.openthings.io/forward/v1/OTd6aad91611ff59ff97f791e5c5ecdf/${urlBody}`
+    console.log(url)
+    fetch(url)
+      .then(response => response.text())
+      .then(data => console.log(data));
+
     return res.send(speechResults);
   } catch (err) {
     console.error("Error converting speech to text: ", err);
